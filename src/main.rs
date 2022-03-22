@@ -1,7 +1,16 @@
+mod error_manager;
+mod utils;
+
 use std::time::Duration;
 use dotenv::dotenv;
+use futures::future::err;
+use futures::select;
 use tokio::runtime::Builder;
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::broadcast;
+use tracing::{error, info};
 use tracing_subscriber::fmt::format;
+use crate::error_manager::ErrorManager;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -11,6 +20,8 @@ pub struct AppState {
 fn main() {
     // Simple .env existence check
     dotenv().ok();
+    // Initial the global logger
+    tracing_subscriber::fmt::init();
     // Dev? Production?
     let env_type = std::env::var("ENVIRONMENT").expect("ENVIRONMENT must be set").to_uppercase();
     // Retrieve the current machine name just in case we need it for environment setups
@@ -25,6 +36,13 @@ fn main() {
         }
     };
 
+    // When the provided `shutdown` future completes, we must send a shutdown
+    // message to all active connections. We use a broadcast channel for this
+    // purpose. The call below ignores the receiver of the broadcast pair, and when
+    // a receiver is needed, the subscribe() method on the sender is used to create
+    // one.
+    let (notify_shutdown, _) = broadcast::channel(1);
+
     // Setup the tokio runtime for running the entire instance.
     let rt = Builder::new_multi_thread()
         .enable_all()
@@ -36,6 +54,57 @@ fn main() {
 
     // Start an async instance of thalia.
     rt.block_on(async {
+        let error_manager = ErrorManager::new(app_state.amqp_url,
+                                              notify_shutdown.subscribe());
 
+        tokio::spawn(async move {
+            error_manager.run().await;
+        });
+
+        let mut alarm_sig = signal(SignalKind::alarm()).expect("Alarm stream failed.");
+        let mut hangup_sig = signal(SignalKind::hangup()).expect("Hangup stream failed.");
+        let mut int_sig = signal(SignalKind::interrupt()).expect("Interrupt stream failed.");
+        let mut pipe_sig = signal(SignalKind::pipe()).expect("Pipe stream failed.");
+        let mut quit_sig = signal(SignalKind::quit()).expect("Quit stream failed.");
+        let mut term_sig = signal(SignalKind::terminate()).expect("Terminate stream failed.");
+        let mut ud1_sig = signal(SignalKind::user_defined1()).expect("UD1 signal stream failed.");
+        let mut ud2_sig = signal(SignalKind::user_defined2()).expect("UD2 signal stream failed.");
+        select! {
+            _ = alarm_sig.recv() => {
+                info!("SIGALRM received, terminating the indexer now!");
+            }
+            _ = hangup_sig.recv() => {
+                info!("SIGHUP received, terminating the indexer now!");
+            }
+            _ = int_sig.recv() => {
+                info!("SIGINT received, terminating the indexer now!");
+            }
+            _ = pipe_sig.recv() => {
+                info!("SIGPIPE received, terminating the indexer now!");
+            }
+            _ = quit_sig.recv() => {
+                info!("SIGQUIT received, terminating the indexer now!");
+            }
+            _ = term_sig.recv() => {
+                info!("SIGTERM received, terminating the indexer now!");
+            }
+            _ = ud1_sig.recv() => {
+                info!("SIGUSR1 received, terminating tdhe indexer now!");
+            }
+            _ = ud2_sig.recv() => {
+                info!("SIGUSR2 received, terminating the indexer now!");
+            }
+        }
+
+        drop(notify_shutdown);
+
+        if let Err(err) = application_thread.await {
+            error!(
+                "There was an error terminating the application gracefully due to {}",
+                err
+            );
+        } else {
+            info!("Indexer was gracefully terminated.");
+        }
     });
 }
