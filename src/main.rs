@@ -1,20 +1,22 @@
+#[macro_use]
+extern crate tokio;
+
 mod error_manager;
 mod utils;
 
 use std::time::Duration;
 use dotenv::dotenv;
-use futures::future::err;
-use futures::select;
 use tokio::runtime::Builder;
+use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::broadcast;
 use tracing::{error, info};
-use tracing_subscriber::fmt::format;
 use crate::error_manager::ErrorManager;
 
 #[derive(Clone)]
 pub struct AppState {
     amqp_url: String,
+    amqp_exchange: String
 }
 
 fn main() {
@@ -33,7 +35,8 @@ fn main() {
             "DEVELOPMENT" | "DEV" => std::env::var(format!("{}_AMQP_URL", machine_name))
                 .expect(&*format!("{}_AMQP_URL must be set", machine_name)),
             _ => std::env::var("AMQP_URL").expect("AMQP_URL must be set")
-        }
+        },
+        amqp_exchange: std::env::var("MQ_EXCHANGE").expect("MQ_EXCHANGE must be set")
     };
 
     // When the provided `shutdown` future completes, we must send a shutdown
@@ -54,10 +57,11 @@ fn main() {
 
     // Start an async instance of thalia.
     rt.block_on(async {
-        let error_manager = ErrorManager::new(app_state.amqp_url,
-                                              notify_shutdown.subscribe());
+        let mut error_manager = ErrorManager::new(app_state.amqp_url,
+                                                  app_state.amqp_exchange,
+                                                  notify_shutdown.subscribe());
 
-        tokio::spawn(async move {
+        let application_thread = tokio::spawn(async move {
             error_manager.run().await;
         });
 
