@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tokio;
 
-mod error_manager;
+mod log_manager;
 mod utils;
 
 use std::time::Duration;
@@ -11,7 +11,7 @@ use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::broadcast;
 use tracing::{error, info};
-use crate::error_manager::ErrorManager;
+use crate::log_manager::LogManager;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -57,12 +57,14 @@ fn main() {
 
     // Start an async instance of thalia.
     rt.block_on(async {
-        let mut error_manager = ErrorManager::new(app_state.amqp_url,
-                                                  app_state.amqp_exchange,
-                                                  notify_shutdown.subscribe());
+        let mut log_manager = LogManager::new(app_state.amqp_url,
+                                              app_state.amqp_exchange,
+                                              std::env::var("SLACK_HOOK")
+                                                  .expect("SLACK_HOOK must be set"),
+                                              notify_shutdown.clone());
 
         let application_thread = tokio::spawn(async move {
-            error_manager.run().await;
+            log_manager.run().await;
         });
 
         let mut alarm_sig = signal(SignalKind::alarm()).expect("Alarm stream failed.");
