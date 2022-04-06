@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  AMQP_URL: amqp://guest:guest@127.0.0.1:5672//
+  APPUSER_AMQP_URL: amqp://guest:guest@rabbitmq:5672//
+  ENVIRONMENT: Production
+  MQ_EXCHANGE: esd
+  NICHOLASCHEN_AMQP_URL: amqp://guest:guest@localhost:5672//
+  NIXHOLAS_AMQP_URL: amqp://guest:guest@localhost:5672//
+  RUST_LOG: debug
+  SLACK_HOOK: https://hooks.slack.com/services/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
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: thalia-env
+  name: env
