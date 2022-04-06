@@ -5,12 +5,13 @@ WORKDIR /opt
 RUN USER=root cargo new --bin thalia
 WORKDIR /opt/thalia
 COPY ./Cargo.toml ./Cargo.toml
-RUN cargo build --release
-RUN rm ./src/*.rs
-RUN rm ./target/release/deps/thalia*
 
 FROM debian:buster-slim
 RUN apt-get install -y pkg-config
+
+RUN cargo build --release
+RUN rm ./src/*.rs
+RUN rm ./target/release/deps/thalia*
 
 ADD ./src ./src
 RUN cargo build --release
