@@ -1,13 +1,12 @@
-FROM rust:1.57.0-alpine as builder
+FROM debian:buster-slim
+RUN apt-get install -y pkg-config
 
+FROM rust:1.57.0-alpine as builder
 RUN apk add --no-cache musl-dev
 WORKDIR /opt
 RUN USER=root cargo new --bin thalia
 WORKDIR /opt/thalia
 COPY ./Cargo.toml ./Cargo.toml
-
-FROM debian:buster-slim
-RUN apt-get install -y pkg-config
 
 RUN cargo build --release
 RUN rm ./src/*.rs
