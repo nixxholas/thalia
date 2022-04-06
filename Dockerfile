@@ -9,6 +9,9 @@ RUN cargo build --release
 RUN rm ./src/*.rs
 RUN rm ./target/release/deps/thalia*
 
+FROM debian:buster-slim
+RUN apt-get install -y pkg-config
+
 ADD ./src ./src
 RUN cargo build --release
 
