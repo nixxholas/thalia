@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
           - dockerfile: ./Dockerfile
-            image: ghcr.io/nixxholas/thalia
+            image: ghcr.io/nixxholas/error_ms
     permissions:
       contents: read
       packages: write
