@@ -4,7 +4,6 @@ RUN apk add --no-cache musl-dev
 WORKDIR /opt
 RUN USER=root cargo new --bin thalia
 WORKDIR /opt/thalia
-COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
 RUN cargo build --release
 RUN rm ./src/*.rs
