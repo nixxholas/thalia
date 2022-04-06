@@ -1,5 +1,5 @@
 FROM debian:buster-slim
-RUN apt-get install -y pkg-config
+RUN apt-get install -y pkg-config libssl-dev
 
 FROM rust:1.57.0-alpine as builder
 RUN apk add --no-cache musl-dev
