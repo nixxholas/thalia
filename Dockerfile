@@ -1,6 +1,5 @@
 FROM rust:1.57.0-alpine as builder
 
-RUN apt-get -y install pkg-config
 RUN apk add --no-cache musl-dev
 WORKDIR /opt
 RUN USER=root cargo new --bin thalia
