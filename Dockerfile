@@ -34,7 +34,6 @@ RUN rustup component add rustfmt
 RUN USER=root cargo new --bin thalia
 WORKDIR ./thalia
 COPY ./Cargo.toml ./Cargo.toml
-COPY ./submodules ./submodules
 RUN cargo build --release
 RUN rm src/*.rs
 
